@@ -19,7 +19,7 @@ namespace TSJ.Slack.Notifier
          * Taking the liberty to put this up top, because it's the actual "do something" part
          * This method fires every POLL_INTERVAL milliseconds
          * */
-        const short POLL_INTERVAL = 1000;
+        const short POLL_INTERVAL = 10000;
         static void t_Tick(object sender, EventArgs e)
         {
             //find all the chromes for r2integrated slack
