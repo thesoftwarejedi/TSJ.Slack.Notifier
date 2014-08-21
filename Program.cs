@@ -15,9 +15,44 @@ namespace TSJ.Slack.Notifier
     static class Program
     {
 
+        /**
+         * Taking the liberty to put this up top, because it's the actual "do something" part
+         * This method fires every POLL_INTERVAL milliseconds
+         * */
+        const short POLL_INTERVAL = 1000;
+        static void t_Tick(object sender, EventArgs e)
+        {
+            //find all the chromes for r2integrated slack
+            var pids = Process.GetProcessesByName("chrome").Select(a => (uint)a.Id).ToArray();
+            if (pids == null || pids.Length == 0) return;            
+            //get pointers to the chrome windows (lazy enum)
+            var hWnds = GetRootWindowsOfProcesses(pids);
+            //inspect them all
+            foreach (var hWnd in hWnds)
+            {
+                if (!GetWindowText(hWnd).Contains("| R2Integrated Slack")) continue; 
+                if (hWnd == IntPtr.Zero) continue;
+                if (_s_slackWin == IntPtr.Zero)
+                {
+                    _s_slackWin = hWnd;
+                }
+                //get the icon for the window
+                byte[] bs = IconToByteArray(GetWindowIcon(hWnd));
+                //if it matches, flash the window
+                if (memcmp(bs, _s_messageIcon, bs.Length) == 0)
+                {
+                    _s_slackWin = hWnd;
+                    FlashWindow(hWnd, true);
+                    _s_icon.ShowBalloonTip(1000, "Check Slack", "Hey slacker, you have unread messages!", ToolTipIcon.Info);
+                }
+            }
+        }
+
         static NotifyIcon _s_icon;
         //the byte[] for the message icon
         static byte[] _s_messageIcon;
+        //save the slack window for setting active
+        static IntPtr _s_slackWin;
 
         [STAThread]
         static void Main()
@@ -45,37 +80,28 @@ namespace TSJ.Slack.Notifier
             items[0].Click += new EventHandler(About_Click);
             _s_icon.ContextMenu = new ContextMenu(items);
             _s_icon.Visible = true;
+            _s_icon.DoubleClick += _s_icon_DoubleClick;
             var t = new System.Windows.Forms.Timer();
-            t.Interval = 10000;
+            t.Interval = POLL_INTERVAL;
             t.Tick += t_Tick;
             t.Start();
             Application.Run();
+        }
+
+        static void _s_icon_DoubleClick(object sender, EventArgs e)
+        {
+            try
+            {
+                ShowWindow(_s_slackWin, SW.SHOWDEFAULT);
+                SetForegroundWindow(_s_slackWin);
+            }
+            catch { }
         }
 
         static void Application_ThreadException(object sender, ThreadExceptionEventArgs e)
         {
             _s_icon.Dispose();
             Application.Exit();
-        }
-
-        static void t_Tick(object sender, EventArgs e)
-        {
-            //find all the chromes
-            var pids = Process.GetProcesses().Where(a => { try { return a.MainModule.ModuleName == "chrome.exe"; } catch { return false; } }).Select(a => (uint)a.Id).ToArray();
-            if (pids == null || pids.Length == 0) return;
-            //get pointers to the chrome windows (lazy enum)
-            var hWnds = GetRootWindowsOfProcesses(pids);
-            //find the first window with the text we're looking for
-            var hWnd = hWnds.FirstOrDefault(a => GetWindowText(a).Contains("| R2Integrated Slack"));
-            if (hWnd == IntPtr.Zero) return;
-            //get the icon for the window
-            byte[] bs = IconToByteArray(GetWindowIcon(hWnd));
-            //if it matches, flash the window
-            if (memcmp(bs, _s_messageIcon, bs.Length) == 0)
-            {
-                FlashWindow(hWnd, true);
-                _s_icon.ShowBalloonTip(1000, "Check Slack", "Hey slacker, you have unread messages!", ToolTipIcon.Info);
-            }
         }
 
         static void About_Click(object sender, EventArgs e)
@@ -89,7 +115,11 @@ namespace TSJ.Slack.Notifier
             Application.Exit();
         }
 
-        const int _s_charCount = 256;
+        /**
+         * These helpers use the pinvoke to do fun stuff
+         * */
+
+        const int _s_charCount = 512;
         static string GetWindowText(IntPtr a)
         {
             var sb = new StringBuilder(_s_charCount);
@@ -174,6 +204,26 @@ namespace TSJ.Slack.Notifier
          *  byte array comparison
          * 
          * */
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        public static extern bool ShowWindow(IntPtr hWnd, SW cmd);
+        public enum SW
+        {
+            HIDE = 0,
+            SHOWNORMAL = 1,
+            SHOWMINIMIZED = 2,
+            SHOWMAXIMIZED = 3,
+            SHOWNOACTIVATE = 4,
+            SHOW = 5,
+            MINIMIZE = 6,
+            SHOWMINNOACTIVE = 7,
+            SHOWNA = 8,
+            RESTORE = 9,
+            SHOWDEFAULT = 10
+        }
 
         [DllImport("user32.dll")]
         static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
