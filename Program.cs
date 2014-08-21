@@ -38,8 +38,25 @@ namespace TSJ.Slack.Notifier
                 }
                 //get the icon for the window
                 byte[] bs = IconToByteArray(GetWindowIcon(hWnd));
+
+                //HACK FIX
+                var match = true;
+                for (int i = 0; i < bs.Length; i++)
+                {
+                    if (bs[i] != _s_messageIcon[i])
+                    {
+                        Debug.Write(i);
+                        if (i != 9)
+                        {
+                            match = false;
+                            break;
+                        }
+                    }
+                }
+
                 //if it matches, flash the window
-                if (memcmp(bs, _s_messageIcon, bs.Length) == 0)
+                //if (memcmp(bs, _s_messageIcon, bs.Length) == 0)
+                if (match)
                 {
                     _s_slackWin = hWnd;
                     FlashWindow(hWnd, true);
