@@ -22,6 +22,8 @@ namespace TSJ.Slack.Notifier
         const short POLL_INTERVAL = 10000;
         static void t_Tick(object sender, EventArgs e)
         {
+            if (!Properties.Settings.Default.ShowBubbles && !Properties.Settings.Default.FlashWindow) return;
+
             //find all the chromes for r2integrated slack
             var pids = Process.GetProcessesByName("chrome").Select(a => (uint)a.Id).ToArray();
             if (pids == null || pids.Length == 0) return;            
@@ -59,8 +61,14 @@ namespace TSJ.Slack.Notifier
                 if (match)
                 {
                     _s_slackWin = hWnd;
-                    FlashWindow(hWnd, true);
-                    _s_icon.ShowBalloonTip(1000, "Check Slack", "Hey slacker, you have unread messages!", ToolTipIcon.Info);
+                    if (Properties.Settings.Default.FlashWindow)
+                    {
+                        FlashWindow(hWnd, true);
+                    }
+                    if (Properties.Settings.Default.ShowBubbles)
+                    {
+                        _s_icon.ShowBalloonTip(1000, "Check Slack", "Hey slacker, you have unread messages!", ToolTipIcon.Info);
+                    }
                 }
             }
         }
@@ -77,6 +85,7 @@ namespace TSJ.Slack.Notifier
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.ThreadException += new ThreadExceptionEventHandler(Application_ThreadException);
+            Application.ApplicationExit += Application_ApplicationExit;
 
             _s_icon = new NotifyIcon();
             //load the icon
@@ -90,11 +99,13 @@ namespace TSJ.Slack.Notifier
                 _s_messageIcon = IconToByteArray(new Icon(s));
             }
 
-            MenuItem[] items = new MenuItem[2];
-            items[1] = new MenuItem("Exit");
-            items[1].Click += new EventHandler(Exit_Click);
-            items[0] = new MenuItem("About");
-            items[0].Click += new EventHandler(About_Click);
+            MenuItem[] items = new MenuItem[3];
+            items[2] = new MenuItem("Exit");
+            items[2].Click += Exit_Click;
+            items[1] = new MenuItem("About");
+            items[1].Click += About_Click;
+            items[0] = new MenuItem("Settings");
+            items[0].Click += Settings_Click;
             _s_icon.ContextMenu = new ContextMenu(items);
             _s_icon.Visible = true;
             _s_icon.DoubleClick += _s_icon_DoubleClick;
@@ -103,6 +114,16 @@ namespace TSJ.Slack.Notifier
             t.Tick += t_Tick;
             t.Start();
             Application.Run();
+        }
+
+        private static void Settings_Click(object sender, EventArgs e)
+        {
+            new SettingsForm().ShowDialog();
+        }
+
+        private static void Application_ApplicationExit(object sender, EventArgs e)
+        {
+            Properties.Settings.Default.Save();
         }
 
         static void _s_icon_DoubleClick(object sender, EventArgs e)
@@ -123,7 +144,7 @@ namespace TSJ.Slack.Notifier
 
         static void About_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Causes the windows running slack to flash when you have an unread message.\r\nhttp://github.com/softwarejedi", "Software Jedi Slack Notifier");
+            Process.Start("https://github.com/thesoftwarejedi/TSJ.Slack.Notifier");
         }
 
         static void Exit_Click(object sender, EventArgs e)
