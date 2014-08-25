@@ -62,6 +62,7 @@
             this.ClientSize = new System.Drawing.Size(313, 42);
             this.Controls.Add(this.checkBox2);
             this.Controls.Add(this.checkBox1);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MaximizeBox = false;
             this.MaximumSize = new System.Drawing.Size(329, 81);
@@ -69,6 +70,7 @@
             this.MinimumSize = new System.Drawing.Size(329, 81);
             this.Name = "SettingsForm";
             this.Text = "Slack Notifier Settings";
+            this.TopMost = true;
             this.Load += new System.EventHandler(this.SettingsForm_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
